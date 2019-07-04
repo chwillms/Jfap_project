@@ -1,6 +1,11 @@
 package de.unisaar.jfap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Hero {
+
+  private static Logger LOGGER = LoggerFactory.getLogger(Hero.class);
 
   Role r ;
   int x , y ;
@@ -12,6 +17,7 @@ public class Hero {
    * @return true if this movement is possible
    */
   boolean moveTo ( int deltaX , int deltaY ) {
+    LOGGER.info("Moving to {},{}", deltaX, deltaY);
     return false;
   }
 
