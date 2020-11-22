@@ -23,6 +23,7 @@
 hs_err_pid*
 
 \.idea/
+Jfap_project.iml
 
 target/
 

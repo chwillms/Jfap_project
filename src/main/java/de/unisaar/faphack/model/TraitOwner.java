@@ -1,5 +1,7 @@
 package de.unisaar.faphack.model;
 
+import java.util.ArrayList;
+
 public interface TraitOwner {
 
   /** The list of trait constants, for all characters, there exists a non-listed
@@ -23,6 +25,7 @@ public interface TraitOwner {
   static final String BOW = "bow";
   static final String ARROW = "arrow";
   static final String ARMOR = "armor";
+  static final String KEY = "key";
 
   // Fixtures
   static final String CHEST = "chest";

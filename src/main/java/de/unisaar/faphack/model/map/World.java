@@ -1,5 +1,7 @@
 package de.unisaar.faphack.model.map;
 
+import java.util.List;
+
 import de.unisaar.faphack.model.Game;
 import de.unisaar.faphack.model.MarshallingContext;
 import de.unisaar.faphack.model.Storable;
@@ -16,16 +18,20 @@ public class World implements Storable {
 
   private List<Room> mapElements;
 
-  public World() {}
+  public World() {
+    this.mapElements = new ArrayList<>();
+  }
 
   @Override
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    c.write("game", this.g);
+    c.write("mapElements", this.mapElements);
   }
 
   @Override
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    this.g = c.read("game");
+    c.readAll("mapElements", this.mapElements);
   }
 
   public List<Room> getMapElements(){

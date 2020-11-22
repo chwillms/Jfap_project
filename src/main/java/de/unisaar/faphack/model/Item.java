@@ -3,8 +3,10 @@ package de.unisaar.faphack.model;
 import de.unisaar.faphack.model.map.Tile;
 
 /**
- * @author
+ * Items are things that can be placed on a tile or - in case of wearables,
+ * carried around by a character. Items can have character modifier effects.
  *
+ * @author weissenh
  */
 public abstract class Item extends AbstractObservable<TraitedTileOccupier>
 implements Storable, TraitedTileOccupier {
@@ -28,12 +30,22 @@ implements Storable, TraitedTileOccupier {
 
   }
 
+  public Item(Tile where, String trait, CharacterModifier effect) {
+    this.onTile = where;
+    this.trait = trait; // todo input validation: check if valid trait string!
+    this.effect = effect;
+  }
+
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    c.write("onTile", this.onTile);
+    c.write("trait", this.trait);
+    c.write("effect", this.effect);
   }
 
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    this.onTile = c.read("onTile");
+    this.trait = c.readString("trait");
+    this.effect = c.read("effect");
   }
 
   @Override

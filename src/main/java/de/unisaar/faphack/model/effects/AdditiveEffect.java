@@ -28,8 +28,14 @@ public class AdditiveEffect extends ModifyingEffect {
    * @return a new CharacterModifier
    */
   public CharacterModifier apply(CharacterModifier c) {
-    // TODO: FILL THIS
-    return null;
+    if (c == null) {
+      return null;}
+    CharacterModifier new_c = new CharacterModifier();
+    new_c.health = (int) (c.health + this.health);
+    new_c.magic = (int) (c.magic + this.magic);
+    new_c.power = (int) ( c.power + this.power);
+
+    return new_c;
   }
 
 }

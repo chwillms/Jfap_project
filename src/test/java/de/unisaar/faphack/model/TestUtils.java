@@ -3,6 +3,7 @@ package de.unisaar.faphack.model;
 import de.unisaar.faphack.model.effects.MultiplicativeEffect;
 import de.unisaar.faphack.model.map.*;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.Sys;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -68,6 +69,189 @@ public class TestUtils {
     return game;
   }
 
+  /**   CreateToyGame
+   *
+   *    # = Wall indestructible
+   *    % = Wall destructible
+   *    . = Wall destroyed
+   *    c = Character initial
+   *    F = Fixture
+   *    K = Key
+   *    T = Trap
+   *    S = Stairway
+   *    w = Wearable //not capitalized because it is not stationary
+   *
+   *
+   *    This is the final plan, only room 1 is fully implemented yet
+   *    Room 1:    Room 2
+   *    ####       ####
+   *    #c #      =D  #
+   *    #F%D====== #  #
+   *    ##S#       ####
+   *      |
+   *    ##S#       ####
+   *    #ww#       #  #
+   *    #wwD=======D  #
+   *    ####       ####
+   *    Room 3     Room 4
+   *
+   *
+   * @return Game
+   */
+
+  //Test what happens if room has no or little occupiable floor tiles
+  public static Game createToyGame(){
+    Game game = new Game();
+    World world = new World();
+    List<Room> mapElements = new ArrayList<>();
+
+    // add protagonist
+    addProtagonist(game, "The walking potato");
+
+    //First room containts obstacles, e.g. fountain and destroyable rock
+    Room room1 = createSimpleRoom(4,4,  1);
+
+    //Second room containts nothing (could implement a trap here)
+    Room room2 = createSimpleRoom(4,4, 2);
+
+    //Third room todo: holds weapons and wearables with effect
+    Room room3 = createSimpleRoom(4,4, 3);
+
+    //Fourth room todo: specify e.g. holds other characters that can be attacked
+    Room room4 = createSimpleRoom(4,4, 4);
+
+    //1. First room (obstacles)
+    //Tile[1][1] holds a fixture
+    Item mirrorOfHell = new Fixtures();
+    List<Item> onTile = new ArrayList<>();
+    onTile.add(mirrorOfHell);
+    modifyField(mirrorOfHell, true, "effect", new CharacterModifier(-10, 0, 0, 1));
+    modifyField(mirrorOfHell, true, "onTile", room1.getTiles()[1][1]);
+    modifyField(room1.getTiles()[1][1], false, "items", onTile);
+
+    // Tile[2][1] contains a destructible wall
+    Tile[][] tiles = room1.getTiles();
+    tiles[2][1] = new WallTile(2, 1 , room1, 2);
+    modifyField(room1, false,"tiles", tiles);
+
+    // Tile[3][1] contains a door, connects to second room
+    Tile[][] tiles_r1_door_mod = room1.getTiles();
+    tiles_r1_door_mod[3][1] = new DoorTile(3, 1 , room1, false, true); // locked door
+    modifyField(room1, false,"tiles", tiles_r1_door_mod); //no door provided so room1 had to be modified
+    DoorTile doorTile1 = (DoorTile) room1.getTiles()[3][1];
+    DoorTile doorTile2 = (DoorTile) room2.getTiles()[0][2]; //door was already provided by simple room method
+    connectTiles(doorTile1, doorTile2);
+
+    // Tile[2][0] contains a stairway, connects to the third room
+    // room 1
+    Tile[][] tiles_r1_stair_mod = room1.getTiles();
+    tiles_r1_door_mod[2][0] = new StairTile(3, 1 , room1); //
+    modifyField(room1, false,"tiles", tiles_r1_door_mod);
+    // room 3 [2][3]
+    Tile[][] tiles_r3_stair_mod = room3.getTiles();
+    tiles_r3_stair_mod[2][3] = new StairTile(2, 3 , room3); //
+    modifyField(room3, false,"tiles", tiles_r3_stair_mod);
+    // connect room 1 and room 3
+    StairTile stairTile2 = (StairTile) room1.getTiles()[2][0];
+    StairTile stairTile1 = (StairTile) room3.getTiles()[2][3];
+    connectStairTiles(stairTile2, stairTile1,false);
+
+
+    // 2.Third room Weapons and Items with effect
+    Wearable spear = createWearable(2, true);
+    Armor shield = createArmor(20, 0, 0);
+
+    Wearable poison = createWearable(1, false);
+    modifyField(poison, true, "effect", new CharacterModifier(-2, 0, 0, 1));
+    Wearable sauerkrautSaft = createWearable(1, false);
+    modifyField(sauerkrautSaft, true, "effect", new CharacterModifier(+3, 0, 0, 1));
+
+    //remove the stair tile that was placed by createSimpleRoom
+    // Tile[2][2] contains no stair tile
+    Tile[][] tiles_r3_stair_del_mod = room3.getTiles();
+    tiles_r3_stair_del_mod[2][2] = new FloorTile(2, 2, room3);
+    modifyField(room3, false,"tiles", tiles_r3_stair_del_mod);
+
+    modifyField(room1, false,"tiles", tiles);
+
+    // Place wearables in the room
+    placeItemsInRoom(room3, 1, 2, spear);
+    placeItemsInRoom(room3, 2, 2, shield);
+    placeItemsInRoom(room3, 1, 1, poison);
+    placeItemsInRoom(room3, 2, 1, sauerkrautSaft);
+
+
+
+//    get tiles for rooms
+    Tile[][] tiles1 = room1.getTiles();
+    Tile[][] tiles2 = room2.getTiles();
+    Tile[][] tiles3 = room3.getTiles();
+    Tile[][] tiles4 = room4.getTiles();
+
+//    specify tile types (for all objects)
+    tiles3[3][2] = new StairTile(3, 2, room3); // one-way stair
+    tiles4[0][1] = new StairTile(0, 1, room4);
+
+    tiles4[0][2] = new StairTile(0, 2, room4); // stair without end
+    tiles4[3][2] = new DoorTile(3, 2, room4, true, false); // door without end
+
+    tiles4[1][3] = new DoorTile(1, 3, room4, true, false); // opened door
+    tiles2[1][0] = new DoorTile(1, 0, room2, false, false); // unlocked door
+
+
+
+
+//    update the room
+    modifyField(room1, false, "tiles", tiles1);
+    modifyField(room2, false, "tiles", tiles2);
+    modifyField(room3, false, "tiles", tiles3);
+    modifyField(room4, false, "tiles", tiles4);
+
+//    create objects
+    //    Connect Room3 and Room4 by a one-way stair
+    StairTile stairTile3 = (StairTile) room3.getTiles()[3][2];
+    StairTile stairTile4 = (StairTile) room4.getTiles()[0][1];
+    connectStairTiles(stairTile3, stairTile4, true);
+
+//    Stair without toTile
+    StairTile stairTile5 = (StairTile) room4.getTiles()[0][2];
+
+//    Door without toTile
+    DoorTile doorTile5 = (DoorTile) room4.getTiles()[3][2];
+
+    // Unlocked Door, one door opened, the other closed
+    DoorTile doorTile3 = (DoorTile) room4.getTiles()[1][3];
+    DoorTile doorTile4 = (DoorTile) room2.getTiles()[1][0];
+    connectTiles(doorTile3, doorTile4);
+
+    //haracter c# = createBaseCharacter("#", #, #);
+    //    Character c# = createBaseCharacter("#", #, #);
+    //    addCharacter(room#, #,#, c#);
+    //    addCharacter(room#, #, #,c#);
+
+    Character m1 = createBaseCharacter("flyingSpaghettiMonster", 10, 2);
+    Character m2 = createBaseCharacter("evilHamster", 2, 1);
+    addCharacter(room4, 1, 2, m1);
+    addCharacter(room4, 2, 2, m2);
+
+    //Add Rooms to the world after modifications
+    modifyField(room1, false,"w", world);
+    mapElements.add(room1);
+    modifyField(room2, false,"w", world);
+    mapElements.add(room2);
+    modifyField(room3, false,"w", world);
+    mapElements.add(room3);
+    modifyField(room4, false,"w", world);
+    mapElements.add(room4);
+
+    //Add mapElements to the world though mapElements
+    modifyField(world, false,"mapElements", mapElements);
+
+    //Add game to the world and vice versa
+    modifyField(game, false, "world", world);
+    modifyField(world, false, "g", game);
+    return game;
+  }
 
   /**
    * the default world ( three rooms, connected by stairs and hallways, two characters and some items)

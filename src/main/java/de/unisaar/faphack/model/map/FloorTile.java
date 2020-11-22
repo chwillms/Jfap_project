@@ -1,12 +1,11 @@
 package de.unisaar.faphack.model.map;
 
+import de.unisaar.faphack.model.*;
 import de.unisaar.faphack.model.Character;
-import de.unisaar.faphack.model.Item;
-import de.unisaar.faphack.model.MarshallingContext;
-import de.unisaar.faphack.model.Wearable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author
@@ -38,12 +37,31 @@ public class FloorTile extends Tile {
    */
   @Override
   public Tile willTake(Character c) {
+    // check if we have a real character
+    if (c == null) {return null;}
+
+    // we can't go on the tile if it's already occupied
+    // search for inhabitants in the room & check if the character is our character itself
+    for (Character character : room.getInhabitants()) {
+      if (this.isOccupied(character) & character != c) {return null;}
+      else if (this.isOccupied(c)) {return this;}
+    }
+
+    // we can normally go on a floor tile
     return this;
   }
 
   /** FloorTiles can have items on them */
+  @Override
   public List<Item> onTile() {
     return items;
+  }
+
+  public boolean addItem(Fixtures what) { return items.add(what); }
+
+  public List<Item> getFixtures() {
+    // todo: does this modify the original items list? if yes, make a copy first
+    return items.stream().filter(i -> i instanceof Fixtures).collect(Collectors.toList());
   }
 
   @Override
@@ -58,12 +76,14 @@ public class FloorTile extends Tile {
 
   @Override
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    super.marshal(c);
+    c.write("items", this.items);
   }
 
   @Override
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    super.unmarshal(c);
+    c.readAll("items", this.items);
   }
 
   /**
@@ -73,7 +93,8 @@ public class FloorTile extends Tile {
   @Override
   public boolean isOccupied(Character character){
     // TODO please implement me!
-    return false;
+    if (character == null) {return false;}
+    return character.getTile() == this;
   }
 
 }

@@ -7,6 +7,10 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * Tiles have a position in a two-dimensional room and
+ * a trait (used by the gui). There are several kinds of tiles:
+ * FloorTiles, WallTiles, ObstacleTiles, DoorTiles, StairTiles, ...
+ *
  * @author
  *
  */
@@ -33,6 +37,7 @@ public abstract class Tile implements Storable, TraitOwner {
     this.room = room;
     this.x = x;
     this.y = y;
+    if (room != null) this.room.replaceTile(x, y, this);
   }
 
   public int getX() {
@@ -53,13 +58,12 @@ public abstract class Tile implements Storable, TraitOwner {
    * @return the next tile in direction d
    */
   public Tile getNextTile(Direction d) {
-    // TODO please implement me!
-    return null;
+    return this.room.getNextTile(this, d);
   }
 
   /**
    * Can c proceed onto this tile?
-   *
+   * - check if it is a tile you can move to (e.g. wall and can destroy it)
    * @return the current tile if you can move the Character c onto this tile, null
    *         otherwise
    */
@@ -67,6 +71,7 @@ public abstract class Tile implements Storable, TraitOwner {
 
   /**
    *  Almost all tiles can not have items on them.
+   *  FloorTiles can have items for instance
    */
   public List<Item> onTile() {
     return Collections.emptyList();
@@ -83,25 +88,37 @@ public abstract class Tile implements Storable, TraitOwner {
   }
 
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    // write int x, int y, Room room, String trait
+    c.write("x", this.x);
+    c.write("y", this.y);
+    c.write("room", this.room);
+    c.write("trait", this.trait);
   }
 
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    this.x = c.readInt("x");
+    this.y = c.readInt("y");
+    this.room = c.read("room");
+    this.trait = c.readString("trait");
+
   }
 
+  /// remember that not all Tiles can have items placed on them
   public boolean removeItem(Wearable what) {
     return false;
   }
 
+  /// remember that not all Tiles can have items placed on them
   public boolean addItem(Wearable what){
     return false;
   }
 
   /**
    *  Almost all tiles can not be occupied by a character.
+   *  (but FloorTiles can be occupied by a character for example)
    */
   public boolean isOccupied(Character c){
     return false;
   }
+
 }

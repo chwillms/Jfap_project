@@ -5,9 +5,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import de.unisaar.faphack.model.effects.ModifyingEffect;
 import de.unisaar.faphack.model.effects.MultiplicativeEffect;
-import de.unisaar.faphack.model.map.Room;
-import de.unisaar.faphack.model.map.Tile;
+import de.unisaar.faphack.model.map.*;
 
 /**
  * @author
@@ -16,10 +16,13 @@ import de.unisaar.faphack.model.map.Tile;
 public class Character extends AbstractObservable<TraitedTileOccupier>
 implements Storable, TraitedTileOccupier {
 
+  public int currentWeight = 0;
+  public Tile getTile;
+  public int level = 1;
   /**
    * I'm currently on this level
    */
-  private int level = 0;
+//  private int level = 0;
 
   /**
    * The position of the character.
@@ -69,7 +72,7 @@ implements Storable, TraitedTileOccupier {
   /**
    * The currentWeight is the combined weights of armor, weapon and inventory
    */
-  private int currentWeight = 0;
+//  private int currentWeight = 0;
 
   /**
    * All effects that currently apply on the character, for example damage or heal
@@ -104,6 +107,10 @@ implements Storable, TraitedTileOccupier {
    */
   public void move(Tile destination) {
     if (tile != null) {
+//      todo: check if destination is not null!
+//      todo AK: can it be possible that the room of the tile is not defined?
+//      todo AK: test change of the room
+//      todo AK: test number of inhabitants
       Room current = tile.getRoom();
       if (destination.getRoom() != current) {
         current.getInhabitants().remove(this);
@@ -113,6 +120,40 @@ implements Storable, TraitedTileOccupier {
       destination.getRoom().getInhabitants().add(this);
     }
     tile = destination;
+    // Check if moving to the tile has consequences (fountains, stairs, traps, ...)
+    // todo: what if tile contains trap and fountain at the same time?
+    // todo: can we use willTake()?
+    // if floor tile getFixtures: for each get charatermodifier, apply it to the character
+    if (tile instanceof FloorTile) { // todo: traps can also be placed on floortiles...
+      List<Item> fixtures = ((FloorTile) tile).getFixtures();
+      for (Item fixture : fixtures) {
+        assert (fixture instanceof Fixtures);
+        if (fixture instanceof Trap) {
+          Trap t = (Trap) fixture;
+          StairTile st = t.getTrapDoor();
+          if (st != null) {
+            Tile newdestination = st.willTake(this); // willTake will apply trap effect?
+            this.tile = newdestination == null ? this.tile : newdestination;
+            continue; // todo: ok? assume willTake will already apply trap effect?
+            // todo: use continue or break if trap found?
+          }
+        }
+        CharacterModifier cm = fixture.getCharacterModifier();
+        if (cm != null) {
+          cm.applyTo(this);
+        }
+      }
+      // if has trap, move to...
+    }
+    // if stair tile try will take... todo: uncomment?
+//    else if (tile instanceof StairTile) { // don't use plain if here: tile already modified in previous if branch
+//      // todo: maybe we shouldn't do this in that way:
+//      //  MoveEffect also uses willtake and then character.move
+//      //  btw, willTake() looks like a non-modifying function, but it modifies the character:
+//      //  levelup/down, apply trap character modifier effect
+//      Tile newdestination = tile.willTake(this);
+//      tile = newdestination == null? tile : newdestination;
+//    }
   }
 
   /**
@@ -125,15 +166,31 @@ implements Storable, TraitedTileOccupier {
    * @return  boolean <code>true</code> if the action was successful, <code>false</code> otherwise
    */
   public boolean pickUp(Wearable what) {
-    // TODO please implement me!
+//    todo AK: what if it is an armor, why are we adding to the itelms list?
+//    todo AK: test current weight change
+
+    //    AK: added input check
+    if (what == null) {return false;} // todo AK: should return something else? Exception?
+
+    if (this.getTile() == what.getTile()) { // todo: allow character to pick up items that are not on the same tile?
+      if ((this.currentWeight + what.getWeight()) <= this.maxWeight) { //less or equal instead of less
+        this.items.add(what);
+        this.currentWeight += what.getWeight();
+        what.pickUp(this);
+        return true;
+      }
+    }
     return false;
+
   }
+
 
   /**
    * @return void
    */
   public void interact() {
     // TODO Auto-generated method stub
+    // todo: fabz
   }
 
   public Wearable activeWeapon() {
@@ -178,7 +235,8 @@ implements Storable, TraitedTileOccupier {
 
   public int getWeight() {
     // TODO: implement
-    return 0;
+//    return 0;
+    return currentWeight; // AK
   }
 
   public int levelDown() {
@@ -202,22 +260,60 @@ implements Storable, TraitedTileOccupier {
      * stamina, quality of different armors, possibly even in the different
      * dimensions.
      */
+//    AK: added input check
+    if (eff == null) {return;}
 
+    if (this.armor.isEmpty()) {
+      eff.applyTo(this);
+    }
+    else {
+      for (int i = 0; i < this.armor.size(); i++) {
+        ModifyingEffect effect = armor.get(i).getModifyingEffect();
+        effect.apply(eff);
+      }
+      eff.applyTo(this);
+    }
   }
 
   /**
    * Apply the effects of, e.g., a poisoning, eating something, etc.
    */
   public void applyItem(CharacterModifier eff) {
+
+    //    AK: added input check
+    if (eff == null) {return;}
+
+    eff.applyTo(this);
+
   }
 
   /**
    * removes the given Item from the characters inventory
    * @param item the item to be removed
    * @return <code>true</code> if the action was successful, <code>false</code> otherwise
+   *
    */
   public boolean dropItem(Wearable item){
-    // TODO please implement me!
+    if (item == null) {
+      return false;
+    }
+    if (this.items.contains(item)){
+        this.items.remove(item);
+        String tr = item.getTrait(); // AK: do we still need it?
+        if (item instanceof Armor) {
+          this.armor.remove(item);
+        }
+        //todo: what happens if you have an active item equiped that equals another item in items that is not the active weapon
+        //is the active weapon dropped?
+        //Item is equiped as active weapon
+        if(this.activeWeapon == null || this.activeWeapon.equals(item)){
+          this.activeWeapon = null;
+        }
+        this.currentWeight -= item.getWeight();
+        item.drop(this.getTile());
+        // todo AK: need to change character to null?
+        return true;
+    }
     return false;
   }
 
@@ -227,24 +323,71 @@ implements Storable, TraitedTileOccupier {
    * @return <code>true</code> the action was successful, <code>false</code> otherwise
    */
   public boolean equipItem(Wearable wearable){
-    // TODO please implement me!
-    return false;
-  }
+    // check if the wearable item is in the items inventory
+    if (this.items.contains(wearable)) {
+      // if in inventory, check if the wearable item is a weapon
+      if (wearable.isWeapon) {
+        // if weapon, equip character with the wearable item as active weapon
+        this.activeWeapon = wearable;
+        return true;
+      } else {
+        // if not a weapon, equip character with the wearable item as armor
+        this.armor.add((Armor) wearable);
+        return true;
+      }
+    }
+    // if not in inventory, return false
+     return false;
+    }
 
   @Override
   public String getTrait() { return (health == 0 ? "DEAD_" : "") + role; }
 
   @Override
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    c.write("level", this.level);
+    c.write("tile", this.tile);
+    c.write("items", this.items);
+    c.write("health", this.health);
+    c.write("magic", this.magic);
+    c.write("power", this.power);
+    c.write("skills", this.skills);
+    c.write("armor", this.armor);
+    c.write("currentWeight", this.currentWeight);
+    c.write("maxWeight", this.maxWeight);
+    c.write("activeEffects", this.activeEffects);
+    c.write("name", this.name);
+    c.write("role", this.role);
+    c.write("activeWeapon", this.activeWeapon);
   }
 
   @Override
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    this.level = c.readInt("level");
+    this.tile = c.read("tile");
+    c.readAll("items", this.items);
+    this.health = c.readInt("health");
+    this.magic = c.readInt("magic");
+    this.power = c.readInt("power");
+    this.skills = c.read("skills");
+    c.readAll("armor", this.armor);
+    this.currentWeight = c.readInt("currentWeight");
+    this.maxWeight = c.readInt("maxWeight");
+    c.readAll("activeEffects", this.activeEffects);
+    this.name = c.readString("name");
+    this.role = c.readString("role");
+    this.activeWeapon = c.read("activeWeapon");
   }
 
   public void rest() {
     this.power += 5;
+  }
+
+  public boolean owns(Item item) {
+    // return items.contains(item); test for equality or identity?
+    for (Item item2 : items) {
+      if (item2.equals(item)) return true;
+    }
+    return false;
   }
 }

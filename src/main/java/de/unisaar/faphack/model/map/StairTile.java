@@ -1,15 +1,19 @@
 package de.unisaar.faphack.model.map;
 
 import de.unisaar.faphack.model.Character;
+import de.unisaar.faphack.model.CharacterModifier;
 import de.unisaar.faphack.model.MarshallingContext;
 
 /**
- * @author
+ * StairTiles are either the starting or ending point of a Stair.
  *
+ * @author weissenh
  */
 public class StairTile extends Tile {
+  /** this StairTile is either the from or */
   protected Stair stair;
 
+  /** If not null, StairTile has a trap (so this StairTile looks like a normal floor tile) */
   protected Trap trap;
 
   public StairTile() {
@@ -17,8 +21,18 @@ public class StairTile extends Tile {
   }
 
   public StairTile(int x, int y, Room room){
+    this(x, y, room, null, null);
+  }
+
+  public StairTile(int x, int y, Room room, Stair stair) {
+    this(x, y, room, stair, null);
+  }
+
+  public StairTile(int x, int y, Room room, Stair stair, Trap trap) {
     super(x, y, room);
-    trait = STAIR;
+    trait = (trap != null ? FLOOR : STAIR);
+    this.stair = stair;
+    this.trap = trap;
   }
 
   /**
@@ -31,8 +45,37 @@ public class StairTile extends Tile {
    */
   @Override
   public Tile willTake(Character c) {
-    // TODO please implement me!
-   return null;
+    // check if we have a real character
+    if (c == null) {return null;}
+    // todo: check if stair is null (not initialized!
+    // define the default goal tile
+    Tile goalTile = stair.toTile;
+
+    // check if the stair is one-way or two-ways
+    if (this.stair.onlyDown()) {
+      // only down: 'from' -> 'to'
+      // doesn't go: 'to' -> 'from'
+      // if the character stands on the 'to' tile: return null
+      if (this == stair.toTile) {
+        return null;
+      } else {
+        c.levelDown();
+      }
+    }
+
+//    if we want to take the toTile, our goal tile is fromTile
+    if (this == stair.toTile) {
+      c.levelUp();
+      goalTile = stair.fromTile;
+    } else if (this == stair.fromTile){
+      c.levelDown();
+    }
+    if (hasTrap() != null) {
+      // if stair tile contains a trap, apply its effect onto the character
+      CharacterModifier cm = trap.getCharacterModifier();
+      cm.applyTo(c);
+    }
+    return goalTile;
   }
 
   /** Return non-null if this is a trap */
@@ -43,12 +86,16 @@ public class StairTile extends Tile {
 
   @Override
   public void marshal(MarshallingContext c) {
-    // TODO please implement me!
+    super.marshal(c);
+    c.write("stair", this.stair);
+    c.write("trap", this.trap);
   }
 
   @Override
   public void unmarshal(MarshallingContext c) {
-    // TODO please implement me!
+    super.unmarshal(c);
+    this.stair = c.read("stair");
+    this.trap = c.read("trap");
   }
 
   public Stair getStair(){

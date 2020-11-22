@@ -11,6 +11,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import de.unisaar.faphack.model.effects.AdditiveEffect;
+import de.unisaar.faphack.model.map.*;
+import org.json.simple.JSONAware;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -63,6 +66,34 @@ class LoadTest {
     return true;
   }
 
+  @Test
+  void saveAdditiveEffect() {
+    AdditiveEffect ae = new AdditiveEffect(0, 1, -1);
+    File f = getTestResourceFile("", "bla.json");
+    assertTrue(f.canRead());
+    StorableFactory fact = new StorableFactory();
+    StorableRegistrator.registerStorables(fact);
+    MarshallingContext mc = new JsonMarshallingContext(f, fact);
+    mc.save(ae);
+    assertTrue(f.canRead());
+    mc = new JsonMarshallingContext(f, fact);
+    AdditiveEffect aeread = (AdditiveEffect) mc.read();
+    // assertEquals(ae.getHealth(), aeread.getHealth()); // todo do comparison
+    // assertEquals(all other pod instance variables of additive effect)
+  }
+
+  @Test
+  void saveWorld() {
+    World w = new World();
+    File f = getTestResourceFile("", "bla.json");
+    assertTrue(f.canRead());
+    StorableFactory fact = new StorableFactory();
+    StorableRegistrator.registerStorables(fact);
+    MarshallingContext mc = new JsonMarshallingContext(f, fact);
+    mc.save(w);
+    assertTrue(f.canRead());
+  }
+
   /**
    * Creates an instance of the TestUtils default Game which is then saved to a .json file.
    * Finally, a game is loaded from the json file and checked for correctness of all components.
@@ -76,6 +107,7 @@ class LoadTest {
     MarshallingContext mc = new JsonMarshallingContext(f, fact);
     mc.save(game);
     assertTrue(f.canRead());
+    // testDefaultWordData(game.getWorld());
     mc = new JsonMarshallingContext(f, fact);
     Game game2 = (Game)mc.read();
     testDefaultWordData(game2.getWorld());
@@ -84,7 +116,7 @@ class LoadTest {
 
   /**
    * Tests the load and save features by loading an item instance (sword)
-   * from a .json file and writing it back to .json. 
+   * from a .json file and writing it back to .json.
    * The output .json is compared to the input .json.
    * @throws IOException
    * @throws ParseException
@@ -110,5 +142,51 @@ class LoadTest {
     migrateIds(orig, saved);
     reader.close();
     assertEquals(orig, saved);
+  }
+
+  @Test
+  void saveObstacleTile() {
+    File f = getTestResourceFile("", "obstacle.json");
+    StorableFactory fact = new StorableFactory();
+    StorableRegistrator.registerStorables(fact);
+    MarshallingContext mc = new JsonMarshallingContext(f, fact);
+    ObstacleTile tile1 = new ObstacleTile();
+    mc.save(tile1);
+    assertTrue(f.canRead());
+    mc = new JsonMarshallingContext(f, fact);
+    ObstacleTile tile2 = (ObstacleTile) mc.read();
+  }
+
+  @Test
+  void loadTrap() {
+    // todo: how to compare read in trap to other? (equals uses identity, but need equality)
+    File f = getTestResourceFile("", "trap.json");
+    StorableFactory fact = new StorableFactory();
+    StorableRegistrator.registerStorables(fact);
+    MarshallingContext mc = new JsonMarshallingContext(f, fact);
+    // prepare objects
+    Trap t1 = new Trap();
+    FloorTile where = new FloorTile();
+    StairTile hiddenstairtile = new StairTile();
+    CharacterModifier cm = new CharacterModifier(-2, 0, -1, 2);
+    Trap t2 = new Trap(where, hiddenstairtile, cm);
+    // save
+    mc.save(t1);
+    assertTrue(f.canRead());
+    mc = new JsonMarshallingContext(f, fact);
+    // load
+    Trap t1read = (Trap) mc.read();
+//    assertEquals(t1.getTile(), t1read.getTile()); // need migrate IDs ?
+//    assertEquals(t1.getTrait(), t1read.getTrait());
+//    assertEquals(t1.getCharacterModifier(), t1read.getCharacterModifier());
+    // save
+    mc.save(t2);
+    assertTrue(f.canRead());
+    mc = new JsonMarshallingContext(f, fact);
+    // load
+    Trap t2read = (Trap) mc.read();
+//    assertEquals(t2.getTile(), t2read.getTile());
+//    assertEquals(t2.getTrait(), t2read.getTrait());
+//    assertEquals(t2.getCharacterModifier(), t2read.getCharacterModifier());
   }
 }
